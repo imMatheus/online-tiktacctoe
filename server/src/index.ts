@@ -12,7 +12,11 @@ import { createServer } from 'http'
 
 import { Game, User } from './models'
 
+import { loginRouter, gameRouter } from './routes'
+
 async function main() {
+    if (!process.env.MONGODB_URI) throw new Error('')
+
     const app = express()
     const PORT = 4000
     const httpServer = createServer(app)
@@ -26,7 +30,8 @@ async function main() {
 
     app.use(cors({ origin: '*' }))
     app.use(express.json())
-    if (!process.env.MONGODB_URI) throw new Error('')
+    app.use(loginRouter)
+    app.use(gameRouter)
 
     await mongoose.connect(process.env.MONGODB_URI)
 
@@ -45,68 +50,6 @@ async function main() {
         console.log(req.query)
 
         res.json(await User.find({}))
-    })
-
-    app.post('/login', async (req, res) => {
-        const Input = z.object({
-            name: z.string().min(2).max(20),
-            password: z.string(),
-        })
-
-        // makes sure req.body is of valid type
-        if (!Input.safeParse(req.body).success) {
-            return res.status(400).send({ message: 'Invalid types' })
-        }
-
-        const input: z.infer<typeof Input> = req.body
-
-        // find user by the given name
-        const userWithGivenName = await User.findOne({
-            name: { $regex: input.name, $options: 'i' },
-        })
-
-        // if the user does not exit, we create one
-        if (!userWithGivenName) {
-            const user = await User.create({
-                ...input,
-                password: bcrypt.hashSync(input.password, 10),
-            })
-            return res.json({
-                session: jwt.sign(
-                    {
-                        _id: user._id,
-                        name: user.name,
-                    },
-                    'privateKey'
-                ),
-                login: false,
-            })
-        }
-
-        const passwordsMatch = bcrypt.compareSync(
-            input.password,
-            userWithGivenName.password as string
-        )
-        if (!passwordsMatch) {
-            return res.status(401).send({
-                message: 'Password mismatch',
-            })
-        }
-        return res.json({
-            session: jwt.sign(
-                {
-                    _id: userWithGivenName._id,
-                    name: userWithGivenName.name,
-                },
-                'privateKey'
-            ),
-            login: true,
-        })
-    })
-
-    app.get('/games', async (req, res) => {
-        const games = await Game.find({})
-        res.json(games)
     })
 
     httpServer.listen(4000, () => {
