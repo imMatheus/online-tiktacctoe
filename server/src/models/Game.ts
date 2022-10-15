@@ -1,6 +1,6 @@
 import mongoose from 'mongoose'
 
-const boardSchema = new mongoose.Schema(
+const gameSchema = new mongoose.Schema(
     {
         age: {
             type: Number,
@@ -12,4 +12,4 @@ const boardSchema = new mongoose.Schema(
     }
 )
 
-export const Board = mongoose.model('Board', boardSchema)
+export const Game = mongoose.model('Game', gameSchema)
