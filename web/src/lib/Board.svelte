@@ -14,16 +14,16 @@
         console.log(checkWinner(board))
         winner = checkWinner(board)
     }
-    $socket.on('update-board', (_board) => {
-        console.log('we cgooood', _board)
+    $socket.on('update-board', (_game) => {
+        console.log('we cgooood', _game)
         console.log('wag-1 biaaatch ')
 
-        board = _board
+        game = _game
     })
 
-    $socket.on('join-game', (id) => {
-        game = id
-        console.log('we cgooood', game)
+    $socket.on('join-game', (id, _game) => {
+        game = _game
+        console.log('$$$we got a gaaauuum', game)
         $socket.emit('join-game', id)
     })
 
@@ -33,7 +33,7 @@
         board[index] = turn
         turn = turn === 'x' ? 'o' : 'x'
 
-        $socket.emit('change-board', game, board)
+        $socket.emit('change-board', game._id, $socket.id, index)
     }
 </script>
 
@@ -43,13 +43,19 @@
     {#if winner}
         <h2 class="bg-red-500 text-7xl text-center">The winner is {winner}</h2>
     {/if}
-    <div
-        class="mx-auto max-w-xs grid-cols-3 gap-2 grid grid-rows-3 aspect-square"
-    >
-        {#each board as value, index}
-            <BoardSquare {value} {winner} onClick={() => changeSquare(index)} />
-        {/each}
-    </div>
+    {#if game}
+        <div
+            class="mx-auto max-w-xs grid-cols-3 gap-2 grid grid-rows-3 aspect-square"
+        >
+            {#each game.board as value, index}
+                <BoardSquare
+                    {value}
+                    {winner}
+                    onClick={() => changeSquare(index)}
+                />
+            {/each}
+        </div>
+    {/if}
 </div>
 
 <style>

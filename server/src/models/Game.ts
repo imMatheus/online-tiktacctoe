@@ -11,10 +11,29 @@ const gameSchema = new mongoose.Schema(
             ],
             default: Array(9).fill(''),
         },
+        status: {
+            type: String,
+            enum: ['x', 'o', 'ongoing', 'draw'],
+            default: 'ongoing',
+        },
+        turn: {
+            type: String,
+            enum: ['x', 'o'],
+            require: true,
+            default: 'x',
+        },
         participants: {
             type: [
                 {
-                    type: String,
+                    id: {
+                        type: String,
+                        require: true,
+                    },
+                    piece: {
+                        type: String,
+                        enum: ['x', 'o'],
+                        require: true,
+                    },
                     // type: mongoose.Types.ObjectId,
                     // ref: 'user',
                 },

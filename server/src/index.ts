@@ -8,6 +8,7 @@ import { Server } from 'socket.io'
 import { createServer } from 'http'
 import { Game, User, Queue } from './models'
 import { loginRouter, gameRouter } from './routes'
+import { checkGameStatus } from './checkGameStatus'
 
 async function main() {
     if (!process.env.MONGODB_URI) throw new Error('')
@@ -45,44 +46,66 @@ async function main() {
             if (openQueue.socket !== id) {
                 console.log('we got a game!!!!!')
 
+                const random = Math.floor(Math.random() * 2)
+
                 const game = await Game.create({
-                    participants: [openQueue.socket, id],
+                    participants: [
+                        {
+                            id: openQueue.socket,
+                            piece: random === 0 ? 'x' : 'o',
+                        },
+                        {
+                            id: id,
+                            piece: random === 1 ? 'x' : 'o',
+                        },
+                    ],
                 })
                 console.log('id: ', id)
                 console.log('openQueue.socket: ', openQueue.socket)
                 console.log('game._id.toString(): ', game._id.toString())
 
                 socket.join(game._id.toString())
-                socket.emit('join-game', game._id.toString())
-                // io.in(id).socketsJoin(game._id.toString())
-                // io.in(openQueue.socket as string).socketsJoin(
-                //     game._id.toString()
-                // )
-
-                // io.socketsJoin(game._id.toString())
-
+                socket.emit('join-game', game._id.toString(), game)
                 socket
                     .to(openQueue.socket as string)
-                    .emit('join-game', game._id.toString())
+                    .emit('join-game', game._id.toString(), game)
                 // socket.to(id).emit('join-game', game._id.toString())
                 await openQueue.delete()
             }
         })
 
-        socket.on('join-game', (id: string) => {
+        socket.on('join-game', async (id: string) => {
             console.log('we finna join a game: ', id)
 
             socket.join(id)
         })
 
-        socket.on('change-board', async (id, board) => {
-            console.log('board')
-            console.log(board)
+        socket.on('change-board', async (id, user_id, index) => {
+            // console.log('board')
+            // console.log(board)
             console.log(id)
 
-            await Game.findByIdAndUpdate(id, { board: board })
-
-            io.to(id).emit('update-board', board)
+            // await Game.findByIdAndUpdate(id, { board: board })
+            const game = await Game.findById(id)
+            if (
+                !game ||
+                !game.participants.some(
+                    (participant) => participant.id === user_id
+                ) ||
+                game.board[index] !== '' ||
+                game.turn !==
+                    game.participants.find(
+                        (participant) => participant.id === user_id
+                    )?.piece ||
+                checkGameStatus(game.board as any) !== 'ongoing'
+            ) {
+                return
+            }
+            game.board[index] = game.turn
+            game.status = checkGameStatus(game.board as any)
+            game.turn = game.turn === 'x' ? 'o' : 'x'
+            await game.save()
+            io.to(id).emit('update-board', game)
         })
     })
 
