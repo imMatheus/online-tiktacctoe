@@ -13,6 +13,10 @@ const userSchema = new mongoose.Schema(
             type: String,
             require: true,
         },
+        avatar_url: {
+            type: String,
+            default: 'https://avatars.dicebear.com/api/a.svg',
+        },
     },
     {
         timestamps: true,

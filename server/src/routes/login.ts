@@ -3,12 +3,13 @@ import { z } from 'zod'
 import { User } from '../models'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
+import { serialize } from 'cookie'
 
 export const loginRouter = express.Router()
 
 loginRouter.post('/login', async (req, res) => {
     const Input = z.object({
-        name: z.string().min(2).max(20),
+        name: z.string().min(2).max(20).trim(),
         password: z.string(),
     })
 
@@ -28,17 +29,41 @@ loginRouter.post('/login', async (req, res) => {
     if (!userWithGivenName) {
         const user = await User.create({
             ...input,
+            avatar_url: `https://avatars.dicebear.com/api/open-peeps/${input.name}.svg`,
             password: bcrypt.hashSync(input.password, 10),
         })
+
+        const userInfo = {
+            _id: user._id,
+            name: user.name,
+            avatar_url: user.avatar_url,
+        }
+
+        const session = jwt.sign(userInfo, process.env.PRIVATE_KEY as string)
+
+        // res.cookie('session', session, {
+        //     httpOnly: true,
+        //     maxAge: 60 * 60 * 24 * 7, // 1 week
+        // })
+
+        // return res.send('Whippi')
+
+        // res.setHeader(
+        //     'Set-Cookie',
+        //     serialize('session', session, {
+        //         httpOnly: true,
+        //         maxAge: 60 * 60 * 24 * 7, // 1 week
+        //     })
+        // )
+
         return res.json({
-            session: jwt.sign(
-                {
-                    _id: user._id,
-                    name: user.name,
-                },
-                process.env.PRIVATE_KEY as string
-            ),
+            user: userInfo,
+            session,
             login: false,
+            cookie: serialize('session', session, {
+                httpOnly: true,
+                maxAge: 60 * 60 * 24 * 7, // 1 week
+            }),
         })
     }
 
@@ -51,14 +76,26 @@ loginRouter.post('/login', async (req, res) => {
             message: 'Password mismatch',
         })
     }
+
+    const userInfo = {
+        _id: userWithGivenName._id,
+        name: userWithGivenName.name,
+        avatar_url: userWithGivenName.avatar_url,
+    }
+
+    const session = jwt.sign(userInfo, process.env.PRIVATE_KEY as string)
+
+    res.setHeader(
+        'Set-Cookie',
+        serialize('session', session, {
+            httpOnly: false,
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+        })
+    )
+
     return res.json({
-        session: jwt.sign(
-            {
-                _id: userWithGivenName._id,
-                name: userWithGivenName.name,
-            },
-            process.env.PRIVATE_KEY as string
-        ),
-        login: true,
+        user: userInfo,
+        session,
+        login: false,
     })
 })
