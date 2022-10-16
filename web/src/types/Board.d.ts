@@ -15,3 +15,19 @@ export type Board = [
     SquareValue,
     SquareValue
 ]
+
+export interface Participant {
+    id: string
+    piece: 'x' | 'o'
+    _id: string
+}
+
+export type Game = {
+    _id: string
+    board: Board
+    status: 'x' | 'o' | 'ongoing' | 'draw'
+    turn: 'x' | 'o'
+    participants: Participant[]
+    createdAt: Date
+    updatedAt: Date
+}

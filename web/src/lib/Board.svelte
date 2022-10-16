@@ -1,19 +1,25 @@
 <script lang="ts">
-    import type { Board, Winner } from 'src/types/Board'
+    import type { Board, Winner, Game } from 'src/types/Board'
     import { checkWinner } from '../utils/checkWinner'
     import { socket } from '../stores'
 
     import BoardSquare from './BoardSquare.svelte'
-    let board: Board = ['', '', '', '', '', '', '', '', '']
-    let turn: Exclude<Winner, ''> = 'x'
-    let winner: Winner = ''
-    let game: any = null
+
+    let game: Game | null = null
+    let myPiece: null | 'x' | 'o' = null
+    let isMyTurn = false
 
     $: {
-        console.log('hej hej')
-        console.log(checkWinner(board))
-        winner = checkWinner(board)
+        myPiece = game
+            ? game.participants.find((p) => p.id === $socket.id).piece
+            : null
+        isMyTurn = game && myPiece === game.turn
     }
+    // $: {
+    //     console.log('hej hej')
+    //     console.log(checkWinner(board))
+    //     winner = checkWinner(board)
+    // }
     $socket.on('update-board', (_game) => {
         console.log('we cgooood', _game)
         console.log('wag-1 biaaatch ')
@@ -28,35 +34,38 @@
     })
 
     function changeSquare(index: number) {
-        if (board[index] !== '' || winner) return
+        if (game.board[index] !== '' || game.status !== 'ongoing' || !isMyTurn)
+            return
 
-        board[index] = turn
-        turn = turn === 'x' ? 'o' : 'x'
-
+        game.board[index] = game.turn
+        game.turn = game.turn === 'x' ? 'o' : 'x'
+        game = { ...game }
         $socket.emit('change-board', game._id, $socket.id, index)
     }
 </script>
 
-<div class="px-2">
-    <h2 class="bg-pink-500 text-7xl text-center">{turn} - {$socket.id}</h2>
+{#if game}
+    <h2 class="bg-pink-500 text-7xl text-center">
+        {game.turn} - {$socket.id} - you are {myPiece}
+    </h2>
     {JSON.stringify(game, null, 2)}
-    {#if winner}
-        <h2 class="bg-red-500 text-7xl text-center">The winner is {winner}</h2>
+    {#if game.status !== 'ongoing'}
+        <h2 class="bg-red-500 text-7xl text-center">
+            The winner is {game.status}
+        </h2>
     {/if}
-    {#if game}
-        <div
-            class="mx-auto max-w-xs grid-cols-3 gap-2 grid grid-rows-3 aspect-square"
-        >
-            {#each game.board as value, index}
-                <BoardSquare
-                    {value}
-                    {winner}
-                    onClick={() => changeSquare(index)}
-                />
-            {/each}
-        </div>
-    {/if}
-</div>
+    <div
+        class="mx-auto max-w-xs grid-cols-3 gap-2 grid grid-rows-3 aspect-square"
+    >
+        {#each game.board as value, index}
+            <BoardSquare
+                {value}
+                disabled={game.status !== 'ongoing' || !isMyTurn}
+                onClick={() => changeSquare(index)}
+            />
+        {/each}
+    </div>
+{/if}
 
 <style>
 </style>
