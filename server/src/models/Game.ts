@@ -14,8 +14,9 @@ const gameSchema = new mongoose.Schema(
         participants: {
             type: [
                 {
-                    type: mongoose.Types.ObjectId,
-                    ref: 'user',
+                    type: String,
+                    // type: mongoose.Types.ObjectId,
+                    // ref: 'user',
                 },
             ],
             validate: [

@@ -3,15 +3,10 @@ dotenv.config()
 
 import mongoose from 'mongoose'
 import express from 'express'
-import bcrypt from 'bcrypt'
 import cors from 'cors'
-import { z } from 'zod'
 import { Server } from 'socket.io'
-import jwt from 'jsonwebtoken'
 import { createServer } from 'http'
-
-import { Game, User } from './models'
-
+import { Game, User, Queue } from './models'
 import { loginRouter, gameRouter } from './routes'
 
 async function main() {
@@ -19,16 +14,78 @@ async function main() {
 
     const app = express()
     const PORT = 4000
+    app.use(cors({ origin: '*' }))
     const httpServer = createServer(app)
     const io = new Server(httpServer, {
         /* options */
+        cors: { origin: '*' },
     })
 
     io.on('connection', (socket) => {
-        // ...
+        console.log('socket id: ', socket.id)
+        console.log(socket.rooms)
+
+        socket.on('join-queue', async (id: string) => {
+            // find a queue whiting a minute
+            const openQueue = await Queue.findOne({
+                createdAt: {
+                    $gt: new Date().getTime() - 1000 * 60 * 1,
+                },
+            })
+            console.log('props')
+            console.log(socket.rooms)
+            console.log(!!openQueue)
+
+            if (!openQueue) {
+                return await Queue.create({
+                    socket: id,
+                })
+            }
+
+            if (openQueue.socket !== id) {
+                console.log('we got a game!!!!!')
+
+                const game = await Game.create({
+                    participants: [openQueue.socket, id],
+                })
+                console.log('id: ', id)
+                console.log('openQueue.socket: ', openQueue.socket)
+                console.log('game._id.toString(): ', game._id.toString())
+
+                socket.join(game._id.toString())
+                socket.emit('join-game', game._id.toString())
+                // io.in(id).socketsJoin(game._id.toString())
+                // io.in(openQueue.socket as string).socketsJoin(
+                //     game._id.toString()
+                // )
+
+                // io.socketsJoin(game._id.toString())
+
+                socket
+                    .to(openQueue.socket as string)
+                    .emit('join-game', game._id.toString())
+                // socket.to(id).emit('join-game', game._id.toString())
+                await openQueue.delete()
+            }
+        })
+
+        socket.on('join-game', (id: string) => {
+            console.log('we finna join a game: ', id)
+
+            socket.join(id)
+        })
+
+        socket.on('change-board', async (id, board) => {
+            console.log('board')
+            console.log(board)
+            console.log(id)
+
+            await Game.findByIdAndUpdate(id, { board: board })
+
+            io.to(id).emit('update-board', board)
+        })
     })
 
-    app.use(cors({ origin: '*' }))
     app.use(express.json())
     app.use(loginRouter)
     app.use(gameRouter)
