@@ -17,6 +17,7 @@ gameRouter.get('/games', async (req, res) => {
 
         return res.status(400).send(error.message)
     }
+
     const games = await Game.find({}).sort({
         createdAt: -1,
     })

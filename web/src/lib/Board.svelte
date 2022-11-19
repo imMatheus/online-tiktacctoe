@@ -15,15 +15,8 @@
             : null
         isMyTurn = game && myPiece === game.turn
     }
-    // $: {
-    //     console.log('hej hej')
-    //     console.log(checkWinner(board))
-    //     winner = checkWinner(board)
-    // }
-    $socket.on('update-board', (_game) => {
-        console.log('we cgooood', _game)
-        console.log('wag-1 biaaatch ')
 
+    $socket.on('update-board', (_game) => {
         game = _game
     })
 

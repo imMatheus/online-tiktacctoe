@@ -1,68 +1,49 @@
 <script lang="ts">
-    import { onMount } from 'svelte'
-    import Board from './lib/Board.svelte'
-    import Leaderboard from './lib/Leaderboard.svelte'
-    import { socket } from './stores'
     import axios from 'axios'
-    import BoardSquare from './lib/BoardSquare.svelte'
     axios.defaults.baseURL = import.meta.env.VITE_SERVER_URL
-    console.log('server url: ', import.meta.env.VITE_SERVER_URL)
+    import { currentUser } from './stores'
 
-    onMount(() => {
-        // const socket = io(import.meta.env.VITE_SERVER_URL)
-        $socket.on('connect', () => {
-            console.log('you connected with id: ', $socket.id)
-            socket.set($socket)
+    import { onMount } from 'svelte'
+
+    onMount(async () => {
+        console.log('wweeeeeeee')
+
+        console.log(window.localStorage.getItem('session'))
+
+        interface Response {
+            user: {
+                avatar_url: string
+                iat: number
+                name: string
+                _id: string
+            }
+        }
+
+        const { data } = await axios.get<Response>('/me', {
+            headers: {
+                session: window.localStorage.getItem('session'),
+            },
         })
+
+        if (data.user) {
+            $currentUser = data.user
+        }
     })
 
-    let name = ''
-    let password = ''
+    import Router from 'svelte-spa-router'
+    import Home from './lib/routes/Home.svelte'
+    import Game from './lib/routes/Game.svelte'
+    import Login from './lib/routes/Login.svelte'
+    import NotFound from './lib/routes/NotFound.svelte'
 
-    async function login() {
-        const res = await axios.post<{ session: string; cookie: string }>(
-            '/login',
-            {
-                name,
-                password,
-            }
-        )
-
-        console.log('we send a login request')
-        console.log(res.data.cookie)
-        document.cookie = res.data.cookie
-        document.cookie = 'session=' + res.data.session
+    const routes = {
+        '/': Home,
+        '/games/:id': Game,
+        '/login': Login,
+        '*': NotFound,
     }
 </script>
 
-<div class="px-2">
-    <div class="bg-orange-500 p-10">
-        {JSON.stringify(document.cookie, null, 2)}
-    </div>
-    <div class="mx-auto max-w-7xl">
-        <Board />
-        <button
-            class="bg-blue-500 p-4 rounded-full"
-            on:click={() => $socket.emit('join-queue', $socket.id)}
-            >join queue</button
-        >
-        <h1 class="text-3xl font-bold underline">
-            Socket id: {$socket.id}
-        </h1>
-        <form on:submit|preventDefault={login}>
-            <input
-                class="bg-green-500 p-2 rounded-md"
-                type="text"
-                bind:value={name}
-            />
-            <input
-                class="bg-green-500 p-2 rounded-md"
-                type="text"
-                bind:value={password}
-            />
-            <button type="submit">Login</button>
-        </form>
-
-        <Leaderboard />
-    </div>
-</div>
+<main>
+    <Router {routes} />
+</main>

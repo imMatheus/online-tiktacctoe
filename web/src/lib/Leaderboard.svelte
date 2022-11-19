@@ -1,8 +1,9 @@
 <script lang="ts">
     import type { Game } from '../types/Board'
     import axios from 'axios'
-    const promise = axios.get<Game[]>('/games')
-
+    const promise = axios.get<Game[]>('/games', { withCredentials: true })
+    console.log('document.cookie')
+    console.log(document.cookie)
     import Spinner from './Spinner.svelte'
     import LeaderboardRow from './LeaderboardRow.svelte'
 </script>

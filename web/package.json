@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "axios": "^1.1.2",
-    "socket.io-client": "^4.5.3"
+    "socket.io-client": "^4.5.3",
+    "svelte-spa-router": "^3.3.0"
   }
 }

@@ -5,6 +5,7 @@ import mongoose from 'mongoose'
 import express from 'express'
 import cors from 'cors'
 import { Server } from 'socket.io'
+
 import { createServer } from 'http'
 import { Game, User, Queue } from './models'
 import { loginRouter, gameRouter } from './routes'
@@ -15,17 +16,38 @@ async function main() {
 
     const app = express()
     const PORT = 4000
-    app.use(cors({ origin: '*' }))
+
+    const whitelist = ['http://localhost:5173', '*']
+
+    app.use(
+        cors({
+            origin: function (origin, callback) {
+                if (whitelist.indexOf(origin as string) !== -1) {
+                    callback(null, true)
+                } else {
+                    callback(new Error('Not allowed by CORS'))
+                }
+            },
+            credentials: true,
+        })
+    )
+
     const httpServer = createServer(app)
     const io = new Server(httpServer, {
         /* options */
-        cors: { origin: '*' },
+        cors: {
+            origin: function (origin, callback) {
+                if (whitelist.indexOf(origin as string) !== -1) {
+                    callback(null, true)
+                } else {
+                    callback(new Error('Not allowed by CORS'))
+                }
+            },
+            credentials: true,
+        },
     })
 
     io.on('connection', (socket) => {
-        console.log('socket id: ', socket.id)
-        console.log(socket.rooms)
-
         socket.on('join-queue', async (id: string) => {
             // find a queue whiting a minute
             const openQueue = await Queue.findOne({
@@ -33,9 +55,6 @@ async function main() {
                     $gt: new Date().getTime() - 1000 * 60 * 1,
                 },
             })
-            console.log('props')
-            console.log(socket.rooms)
-            console.log(!!openQueue)
 
             if (!openQueue) {
                 return await Queue.create({
@@ -124,11 +143,6 @@ async function main() {
     })
 
     app.get('/users', async (req, res) => {
-        console.log('this the the users query')
-        console.log(req.cookies)
-        console.log(req.body)
-        console.log(req.query)
-
         res.json(await User.find({}))
     })
 

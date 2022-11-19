@@ -7,6 +7,18 @@ import { serialize } from 'cookie'
 
 export const loginRouter = express.Router()
 
+loginRouter.get('/me', async (req, res) => {
+    console.log(req.headers.session)
+    try {
+        const user = jwt.decode(req.headers.session as string)
+        return res.json({ user })
+    } catch (error) {
+        res.status(401).send({ message: 'Invalid session' })
+    }
+
+    return res.json({ user: null })
+})
+
 loginRouter.post('/login', async (req, res) => {
     const Input = z.object({
         name: z.string().min(2).max(20).trim(),
@@ -19,6 +31,8 @@ loginRouter.post('/login', async (req, res) => {
     }
 
     const input: z.infer<typeof Input> = req.body
+
+    console.log('input: ', input)
 
     // find user by the given name
     const userWithGivenName = await User.findOne({
@@ -41,26 +55,12 @@ loginRouter.post('/login', async (req, res) => {
 
         const session = jwt.sign(userInfo, process.env.PRIVATE_KEY as string)
 
-        // res.cookie('session', session, {
-        //     httpOnly: true,
-        //     maxAge: 60 * 60 * 24 * 7, // 1 week
-        // })
-
-        // return res.send('Whippi')
-
-        // res.setHeader(
-        //     'Set-Cookie',
-        //     serialize('session', session, {
-        //         httpOnly: true,
-        //         maxAge: 60 * 60 * 24 * 7, // 1 week
-        //     })
-        // )
-
         return res.json({
             user: userInfo,
             session,
             login: false,
             cookie: serialize('session', session, {
+                path: '/',
                 httpOnly: true,
                 maxAge: 60 * 60 * 24 * 7, // 1 week
             }),
