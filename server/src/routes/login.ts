@@ -22,16 +22,18 @@ loginRouter.get('/me', async (req, res) => {
 loginRouter.post('/login', async (req, res) => {
     const Input = z.object({
         name: z.string().min(2).max(20).trim(),
-        password: z.string(),
+        password: z.string().min(5),
     })
 
     // makes sure req.body is of valid type
     if (!Input.safeParse(req.body).success) {
-        return res.status(400).send({ message: 'Invalid types' })
+        return res.status(400).send({
+            message:
+                'Username needs to be between 2 and 20 characters and password needs to be minimum of 5 characters',
+        })
     }
 
     const input: z.infer<typeof Input> = req.body
-
     console.log('input: ', input)
 
     // find user by the given name
@@ -41,6 +43,8 @@ loginRouter.post('/login', async (req, res) => {
 
     // if the user does not exit, we create one
     if (!userWithGivenName) {
+        input.name = input.name.trim()
+
         const user = await User.create({
             ...input,
             avatar_url: `https://avatars.dicebear.com/api/open-peeps/${input.name}.svg`,
@@ -73,7 +77,7 @@ loginRouter.post('/login', async (req, res) => {
     )
     if (!passwordsMatch) {
         return res.status(401).send({
-            message: 'Password mismatch',
+            message: 'Password missmatch',
         })
     }
 
