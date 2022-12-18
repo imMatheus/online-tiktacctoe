@@ -1,21 +1,32 @@
 import express from 'express'
 import { z } from 'zod'
-import { User } from '../models'
+import { User, Session } from '../models'
 import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
-import { serialize } from 'cookie'
+import crypto from 'crypto'
+import { parse } from 'cookie'
 
 export const loginRouter = express.Router()
 
 loginRouter.get('/me', async (req, res) => {
-    console.log(req.headers.session)
-    console.log(req.cookies)
-
     try {
-        const user = jwt.decode(req.headers.session as string)
-        return res.json({ user })
+        const cookies = parse((req.headers.cookie as string) || '')
+        const sessionId = cookies.sessionId
+        console.log(cookies)
+        console.log(':::::____=====_____::::::')
+
+        if (sessionId) {
+            const session = await Session.findOne({
+                token: sessionId,
+            })
+
+            if (session) {
+                const user = await User.findOne({ _id: session.userId })
+                return res.json({ user })
+            }
+        }
     } catch (error) {
-        res.status(401).send({ message: 'Invalid session' })
+        res.status(401).send({ message: 'Invalid session', user: null })
     }
 
     return res.json({ user: null })
@@ -59,18 +70,22 @@ loginRouter.post('/login', async (req, res) => {
             avatar_url: user.avatar_url,
         }
 
-        const session = jwt.sign(userInfo, process.env.PRIVATE_KEY as string)
-
-        return res.json({
-            user: userInfo,
-            session,
-            login: false,
-            cookie: serialize('session', session, {
-                path: '/',
-                httpOnly: true,
-                maxAge: 60 * 60 * 24 * 7, // 1 week
-            }),
+        const session = await Session.create({
+            userId: userInfo._id,
+            token: crypto.randomUUID(),
         })
+
+        return res
+            .cookie('sessionId', session.token, {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'none',
+                maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+            })
+            .json({
+                user: userInfo,
+                login: false,
+            })
     }
 
     const passwordsMatch = bcrypt.compareSync(
@@ -88,20 +103,20 @@ loginRouter.post('/login', async (req, res) => {
         name: userWithGivenName.name,
         avatar_url: userWithGivenName.avatar_url,
     }
-
-    const session = jwt.sign(userInfo, process.env.PRIVATE_KEY as string)
-
-    res.setHeader(
-        'Set-Cookie',
-        serialize('session', session, {
-            httpOnly: false,
-            maxAge: 60 * 60 * 24 * 7, // 1 week
-        })
-    )
-
-    return res.json({
-        user: userInfo,
-        session,
-        login: false,
+    const session = await Session.create({
+        userId: userInfo._id,
+        token: crypto.randomUUID(),
     })
+
+    return res
+        .cookie('sessionId', session.token, {
+            secure: true,
+            httpOnly: true,
+            sameSite: 'none',
+            maxAge: 60 * 60 * 24 * 7,
+        })
+        .json({
+            user: userInfo,
+            login: true,
+        })
 })

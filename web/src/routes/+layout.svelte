@@ -15,7 +15,11 @@
             user: User
         }
 
-        const { data } = await axios.get<Response>('/me', {})
+        const { data } = await axios.get<Response>('/me', {
+            withCredentials: true,
+        })
+        console.log('hej hej he jh ej')
+        console.log(data)
 
         if (data.user) {
             $currentUser = data.user
