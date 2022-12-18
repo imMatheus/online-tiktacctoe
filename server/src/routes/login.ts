@@ -9,6 +9,8 @@ export const loginRouter = express.Router()
 
 loginRouter.get('/me', async (req, res) => {
     console.log(req.headers.session)
+    console.log(req.cookies)
+
     try {
         const user = jwt.decode(req.headers.session as string)
         return res.json({ user })
